@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bestie Quiz ✨</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f8ff;
+  color: #35445b;
+}
+
+header {
+  text-align: center;
+  padding: 30px 15px;
+  background: #dceeff;
+}
+
+header h1 {
+  margin: 0;
+  color: #42658b;
+  font-size: 32px;
+}
+
+header p {
+  margin-bottom: 0;
+}
+
+main {
+  max-width: 750px;
+  margin: 25px auto;
+  padding: 15px;
+}
+
+.card {
+  background: white;
+  padding: 25px;
+  margin-bottom: 20px;
+  border-radius: 22px;
+  box-shadow: 0 5px 18px #dce5f080;
+}
+
+h2 {
+  color: #537ca8;
+}
+
+input, textarea, select {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0 16px;
+  border: 1px solid #d4e2f1;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+button {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  margin: 5px 3px;
+  background: #a9d5f5;
+  color: #294966;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #91c8ef;
+}
+
+.secondary {
+  background: #ffe0c9;
+  color: #80583e;
+}
+
+.question {
+  padding: 15px;
+  margin: 15px 0;
+  background: #f8fbff;
+  border: 1px solid #e1ecf8;
+  border-radius: 15px;
+}
+
+.option {
+  display: block;
+  margin: 12px 0;
+}
+
+.option input {
+  display: inline-block;
+  width: auto;
+  margin: 0 8px 0 0;
+}
+
+.hidden {
+  display: none;
+}
+
+#message, #result {
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+footer {
+  text-align: center;
+  padding: 20px;
+  color: #718198;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>💖 Bestie Quiz ✨</h1>
+  <p>How well do you know your friends? 🌷</p>
+</header>
+
+<main>
+
+<section id="home" class="card">
+  <h2>Welcome, Quiz Lover! 🥳</h2>
+  <p>Create a fun quiz about yourself or take a friend's quiz!</p>
+
+  <button onclick="showCreate()">🎨 Create My Own Quiz</button>
+  <button class="secondary" onclick="showTake()">🎮 Take a Quiz</button>
+</section>
+
+<section id="create" class="card hidden">
+  <h2>🎨 Create Your Quiz</h2>
+
+  <label>Your name</label>
+  <input id="creator" placeholder="Enter your name">
+
+  <label>Quiz title</label>
+  <input id="title" placeholder="e.g. How Well Do You Know Me?">
+
+  <div id="builder"></div>
+
+  <button onclick="addQuestion()">➕ Add Question</button>
+  <button onclick="makeQuiz()">🔗 Create Share Link</button>
+  <button class="secondary" onclick="goHome()">🏠 Home</button>
+
+  <div id="message"></div>
+</section>
+
+<section id="take" class="card hidden">
+  <h2 id="quizTitle">🎮 Take a Quiz</h2>
+
+  <label>Your name</label>
+  <input id="player" placeholder="Enter your name">
+
+  <div id="quizQuestions"></div>
+
+  <button onclick="submitQuiz()">✨ Submit Answers</button>
+  <button class="secondary" onclick="goHome()">🏠 Home</button>
+</section>
+
+<section id="result" class="card hidden"></section>
+
+</main>
+
+<footer>
+  Made with 💙 for friends, fun and memories!
+</footer>
+
+<script>
+let questions = [];
+let activeQuiz = null;
+
+function hideAll() {
+  ["home", "create", "take", "result"].forEach(id => {
+    document.getElementById(id).classList.add("hidden");
+  });
+}
+
+function goHome() {
+  hideAll();
+  document.getElementById("home").classList.remove("hidden");
+}
+
+function showCreate() {
+  hideAll();
+  document.getElementById("create").classList.remove("hidden");
+
+  if (questions.length === 0) {
+    addQuestion();
+  }
+}
+
+function showTake() {
+  hideAll();
+  document.getElementById("take").classList.remove("hidden");
+
+  if (location.hash.length > 1) {
+    try {
+      activeQuiz = JSON.parse(
+        decodeURIComponent(escape(atob(location.hash.slice(1))))
+      );
+
+      displayQuiz();
+    } catch (error) {
+      document.getElementById("quizTitle").textContent =
+        "Quiz link could not be opened 😕";
+    }
+  } else {
+    document.getElementById("quizTitle").textContent =
+      "🎮 Open a friend's quiz link to play!";
+  }
+}
+
+function addQuestion() {
+  questions.push({
+    text: "",
+    options: ["", "", "", ""],
+    correct: 0
+  });
+
+  renderBuilder();
+}
+
+function renderBuilder() {
+  const builder = document.getElementById("builder");
+  builder.innerHTML = "";
+
+  questions.forEach((q, i) => {
+    const box = document.createElement("div");
+    box.className = "question";
+
+    box.innerHTML = `
+      <h3>Question ${i + 1} ✨</h3>
+
+      <label>Question (English or Roman Urdu)</label>
+      <input placeholder="Write your question"
+        value="${escapeAttr(q.text)}"
+        oninput="questions[${i}].text=this.value">
+
+      ${q.options.map((opt, j) => `
+        <label>Option ${j + 1}</label>
+        <input placeholder="Write an answer"
+          value="${escapeAttr(opt)}"
+          oninput="questions[${i}].options[${j}]=this.value">
+
+        <label class="option">
+          <input type="radio" name="correct${i}"
+            ${q.correct === j ? "checked" : ""}
+            onchange="questions[${i}].correct=${j}">
+          This is the correct answer ✅
+        </label>
+      `).join("")}
+
+      <button class="secondary"
+        onclick="removeQuestion(${i})">🗑️ Remove Question</button>
+    `;
+
+    builder.appendChild(box);
+  });
+}
+
+function escapeAttr(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function removeQuestion(index) {
+  questions.splice(index, 1);
+  renderBuilder();
+}
+
+function makeQuiz() {
+  const creator = document.getElementById("creator").value.trim();
+  const title = document.getElementById("title").value.trim();
+  const message = document.getElementById("message");
+
+  if (!creator || !title || questions.length === 0) {
+    message.textContent = "Please enter your name, title and questions. 💙";
+    return;
+  }
+
+  for (const q of questions) {
+    if (!q.text.trim() || q.options.some(o => !o.trim())) {
+      message.textContent =
+        "Please complete every question and all four options. ✏️";
+      return;
+    }
+  }
+
+  const quiz = {
+    creator,
+    title,
+    questions: questions.map(q => ({
+      text: q.text,
+      options: [...q.options],
+      correct: q.correct
+    }))
+  };
+
+  const encoded = btoa(
+    unescape(encodeURIComponent(JSON.stringify(quiz)))
+  );
+
+  const link = location.href.split("#")[0] + "#" + encoded;
+
+  message.innerHTML = `
+    <h3>🎉 Your quiz link is ready!</h3>
+    <textarea id="shareLink" readonly rows="4"></textarea>
+    <button onclick="copyLink()">📋 Copy Link</button>
+    <p>Send this link to your friends!</p>
+  `;
+
+  document.getElementById("shareLink").value = link;
+}
+
+async function copyLink() {
+  const field = document.getElementById("shareLink");
+  field.select();
+
+  try {
+    await navigator.clipboard.writeText(field.value);
+    alert("Link copied! 💖");
+  } catch (error) {
+    alert("Link select ho gaya hai. Copy ke liye Ctrl+C dabao.");
+  }
+}
+
+function displayQuiz() {
+  document.getElementById("quizTitle").textContent =
+    activeQuiz.title + " 💖";
+
+  const container = document.getElementById("quizQuestions");
+  container.innerHTML = "";
+
+  activeQuiz.questions.forEach((q, i) => {
+    const box = document.createElement("div");
+    box.className = "question";
+
+    const heading = document.createElement("h3");
+    heading.textContent = (i + 1) + ". " + q.text;
+    box.appendChild(heading);
+
+    q.options.forEach((option, j) => {
+      const label = document.createElement("label");
+      label.className = "option";
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "answer" + i;
+      radio.value = j;
+
+      label.appendChild(radio);
+      label.appendChild(document.createTextNode(option));
+      box.appendChild(label);
+    });
+
+    container.appendChild(box);
+  });
+}
+
+function submitQuiz() {
+  if (!activeQuiz) {
+    alert("Please open a valid quiz link first.");
+    return;
+  }
+
+  const player = document.getElementById("player").value.trim();
+
+  if (!player) {
+    alert("Please enter your name! 😊");
+    return;
+  }
+
+  let score = 0;
+  let review = "";
+
+  activeQuiz.questions.forEach((q, i) => {
+    const selected = document.querySelector(
+      'input[name="answer' + i + '"]:checked'
+    );
+
+    if (selected && Number(selected.value) === q.correct) {
+      score++;
+    } else {
+      review += `
+        <div class="question">
+          <b>❌ ${escapeAttr(q.text)}</b><br>
+          Your answer: ${
+            selected
+              ? escapeAttr(q.options[Number(selected.value)])
+              : "Not answered"
+          }<br>
+          Correct answer: ${escapeAttr(q.options[q.correct])}<br>
+          <p>Keep learning about your friend! Every answer helps you
+          discover something new. 💙</p>
+        </div>
+      `;
+    }
+  });
+
+  const total = activeQuiz.questions.length;
+  const percent = Math.round((score / total) * 100);
+
+  let personality;
+
+  if (percent >= 80) {
+    personality =
+      "🌟 Bestie Expert! You seem to know your friend really well. Keep that lovely friendship shining!";
+  } else if (percent >= 50) {
+    personality =
+      "🌷 Friendship Explorer! You know quite a bit, and there is still more to discover together!";
+  } else {
+    personality =
+      "🧸 Friendship Adventure! This quiz gives you a fun reason to learn more about each other!";
+  }
+
+  hideAll();
+
+  const result = document.getElementById("result");
+  result.classList.remove("hidden");
+
+  result.innerHTML = `
+    <h2>🎉 Your Quiz Results</h2>
+    <p>Quiz creator: ${escapeAttr(activeQuiz.creator)}</p>
+    <p>Player: ${escapeAttr(player)}</p>
+    <h3>🏆 Score: ${score} / ${total} (${percent}%)</h3>
+    <h3>💌 Your Personal Message</h3>
+    <p>${personality}</p>
+    <h3>📚 Your Answer Review</h3>
+    ${review || "<p>🌟 Perfect score! You got every answer correct!</p>"}
+    <button onclick="goHome()">🏠 Home</button>
+  `;
+}
+
+(function start() {
+  if (location.hash.length > 1) {
+    showTake();
+  }
+})();
+</script>
+
+</body>
+</html>
